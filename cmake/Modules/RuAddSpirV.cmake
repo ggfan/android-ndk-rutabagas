@@ -34,7 +34,13 @@ if(CMAKE_VERSION VERSION_LESS "3.7")
     )
 endif()
 
+set(GLSL_PATH "")
+if("${CMAKE_SYSTEM_NAME}" MATCHES "Android" )
+  set(GLSL_PATH ${ANDROID_NDK}/shader-tools/${ANDROID_HOST_TAG})
+endif()
+
 find_program(GLSLC glslc REQUIRED
+    HINTS PATH ${GLSL_PATH}
     DOC "Path to glslc executable"
 )
 
