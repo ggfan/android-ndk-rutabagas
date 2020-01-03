@@ -18,6 +18,7 @@ add_library(ru-main SHARED
    ru_rend.c
    quad.vert.spvnum
    quad.frag.spvnum
+   media_format.c
 )
 
 target_link_libraries(ru-main

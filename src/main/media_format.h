@@ -24,24 +24,9 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #pragma once
 
-#include "util/attribs.h"
-#include <android/asset_manager.h>
-
-typedef struct AImage AImage;
-typedef struct AImageReader AImageReader;
-typedef struct RuMedia RuMedia;
-
-RuMedia *ru_media_new(const char *src_path) _malloc_ _must_use_result_;
-RuMedia *ru_asset_media_new(AAssetManager *asset_mgr, const char *src_path) _malloc_ _must_use_result_;
-
-// Implicitly calls ru_media_stop().
-void ru_media_free(RuMedia *m);
-
-void ru_media_start(RuMedia *m);
-void ru_media_stop(RuMedia *m);
-int32_t ru_media_get_frame_rate(RuMedia* m);
-
-AImageReader *ru_media_get_aimage_reader(RuMedia *m) _must_use_result_;
+#include <stdbool.h>
+#include <media/NdkMediaFormat.h>
+bool print_media_format(AMediaFormat* fmt);
+bool media_format_contains_key(AMediaFormat* fmt, const char * key);

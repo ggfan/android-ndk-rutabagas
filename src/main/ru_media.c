@@ -59,6 +59,8 @@ typedef struct AMediaCodecOnAsyncNotifyCallback AMediaCodecOnAsyncNotifyCallback
 #include "ru_media.h"
 #include <android/asset_manager.h>
 
+#include "media_format.h"
+
 
 #define RU_MEDIA_MAX_IMAGE_COUNT 8
 
@@ -87,6 +89,7 @@ typedef struct RuMedia {
 
     uint32_t track; // We play a single track, the first video track.
     AMediaFormat *format;
+    int32_t frame_rate;
     AMediaExtractor *ex;
     AMediaCodec *codec;
     AImageReader *image_reader;
@@ -237,7 +240,7 @@ on_codec_output_available(AMediaCodec *codec, void *_media, int32_t index,
 
 static void
 select_track(AMediaExtractor *ex, uint32_t *out_track,
-        AMediaFormat **out_format)
+        AMediaFormat **out_format, int32_t *frame_rate)
 {
     int ret;
 
@@ -272,6 +275,16 @@ select_track(AMediaExtractor *ex, uint32_t *out_track,
     if (track == n_tracks)
         die("media: failed to find video track");
 
+    *frame_rate = 24;
+    float rate_in_float;
+    if (AMediaFormat_getFloat(format, AMEDIAFORMAT_KEY_FRAME_RATE, &rate_in_float)) {
+        *frame_rate = (int)(rate_in_float + 0.5f);
+    } else {
+        AMediaFormat_getInt32(format, AMEDIAFORMAT_KEY_FRAME_RATE, frame_rate);
+    }
+    logd("media: frame rate = %d", (int)frame_rate);
+
+    print_media_format(format);
     logd("media: select track %u", track);
     ret = AMediaExtractor_selectTrack(ex, track);
     if (ret)
@@ -308,7 +321,7 @@ ru_media_new(const char *src_path) {
 
     close(src_fd);
 
-    select_track(m->ex, &m->track, &m->format);
+    select_track(m->ex, &m->track, &m->format, &m->frame_rate);
 
     int32_t width, height;
     if (!AMediaFormat_getInt32(m->format, AMEDIAFORMAT_KEY_WIDTH, &width) ||
@@ -389,7 +402,7 @@ ru_asset_media_new(AAssetManager *asset_mgr, const char *src_path) {
     if (ret)
         die("media: AMediaExtractor_setDataSourceFd failed: error=%d", ret);
 
-    select_track(m->ex, &m->track, &m->format);
+    select_track(m->ex, &m->track, &m->format, &m->frame_rate);
 
     int32_t width, height;
     if (!AMediaFormat_getInt32(m->format, AMEDIAFORMAT_KEY_WIDTH, &width) ||
@@ -484,4 +497,8 @@ AImageReader *
 ru_media_get_aimage_reader(RuMedia *m) {
     assert(m->image_reader);
     return m->image_reader;
+}
+
+int32_t ru_media_get_frame_rate(RuMedia* m) {
+    return m->frame_rate;
 }

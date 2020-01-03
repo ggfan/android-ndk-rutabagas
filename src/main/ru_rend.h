@@ -42,6 +42,7 @@ typedef enum RuRendUseExternalFormat {
 struct ru_rend_new_args {
     bool use_validation;
     RuRendUseExternalFormat use_external_format;
+    int32_t  presentation_rate;
 };
 
 #define ru_rend_new(...) ru_rend_new_s((struct ru_rend_new_args) { 0, __VA_ARGS__ })

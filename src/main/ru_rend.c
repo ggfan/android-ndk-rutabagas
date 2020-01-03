@@ -33,6 +33,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#define NANOS_IN_SECOND 1000000000
+
 
 // Linux
 #include <sys/types.h>
@@ -256,6 +259,8 @@ typedef struct RuRend {
 
     RuChan event_chan;
     pthread_t thread; // See ru_rend_thread().
+    uint64_t present_time;
+    uint64_t frame_rate_in_nanos;
 } RuRend;
 
 // Use the driver's default allocator.
@@ -1999,7 +2004,8 @@ ru_aimage_heap_pop_wait(RuAImageHeap *heap) {
 
     // TODO: Use AImageReader_acquireLatestImageAsync.
     AImage *aimage;
-    ret = AImageReader_acquireLatestImage(heap->aimage_reader, &aimage);
+//    ret = AImageReader_acquireLatestImage(heap->aimage_reader, &aimage);
+    ret = AImageReader_acquireNextImage(heap->aimage_reader, &aimage);
 
     heap->aimage_available.count = 0;
 
@@ -2129,6 +2135,16 @@ ru_rend_unpause(RuRend *rend) {
         (RuRendEvent) { .type = RU_REND_EVENT_UNPAUSE, });
 }
 
+// get current time in nano second
+static uint64_t get_current_time(void) {
+    struct timespec res;
+    uint64_t  nano_time;
+    clock_gettime(CLOCK_MONOTONIC, &res);
+    nano_time = res.tv_sec * NANOS_IN_SECOND;
+    nano_time +=res.tv_nsec;
+    return nano_time;
+}
+
 RuRend *
 ru_rend_new_s(struct ru_rend_new_args args) {
     let rend = new(RuRend);
@@ -2139,6 +2155,7 @@ ru_rend_new_s(struct ru_rend_new_args args) {
     rend->use_ext_format = args.use_external_format;
 
     rend->queue_fam_index = ru_choose_queue_family(&rend->phys_dev);
+    rend ->frame_rate_in_nanos = (uint64_t) (NANOS_IN_SECOND / (float)args.presentation_rate);
 
     vkGetDeviceQueue(rend->dev.vk, rend->queue_fam_index, /*queueIndex*/ 0,
             &rend->queue);
@@ -2223,6 +2240,7 @@ ru_rend_new_s(struct ru_rend_new_args args) {
     if (pthread_create(&rend->thread, NULL, ru_rend_thread, rend))
         abort();
 
+    rend->present_time  = get_current_time();
     return rend;
 }
 
@@ -2301,6 +2319,16 @@ on_aimage_buffer_removed(
 static void
 ru_rend_present(RuRend *rend) {
     static _Atomic uint64_t seq = 0;
+
+    // rendering according to framerate
+    uint64_t current_time = get_current_time();
+    if ((current_time - rend->present_time) < rend->frame_rate_in_nanos) {
+        logd("=====Skip a frame");
+        return;
+    } else {
+        rend->present_time = current_time;
+    }
+
     logd("%s: seq=%"PRIu64, __func__, ++seq);
 
     RuInstance *inst = &rend->inst;

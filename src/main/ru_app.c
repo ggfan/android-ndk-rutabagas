@@ -106,7 +106,9 @@ ru_app_new(struct android_app *android) {
     app->media = ru_asset_media_new(android->activity->assetManager, media_name);
     app->rend = ru_rend_new(
         .use_validation = use_validation,
-        .use_external_format = use_ext_format);
+        .use_external_format = use_ext_format,
+        .presentation_rate = ru_media_get_frame_rate(app->media)
+        );
 
     AAssetDir_close(asset_dir);
 
